@@ -14,6 +14,7 @@ try {
   createClient = null;
 }
 
+// Read env at module load. Values are injected by CRA at build time.
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY;
 
@@ -21,16 +22,22 @@ let client = null;
 
 // PUBLIC_INTERFACE
 export function getSupabaseClient() {
-  /** Returns a singleton Supabase client if env vars are configured and dep available, otherwise null. */
+  /**
+   * Returns a singleton Supabase client if env vars are configured and dep available, otherwise null.
+   * Never hardcodes secrets. Uses only REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_KEY.
+   */
   if (client) return client;
-  if (!SUPABASE_URL || !SUPABASE_KEY || !createClient) {
+  const url = typeof SUPABASE_URL === 'string' ? SUPABASE_URL.trim() : '';
+  const key = typeof SUPABASE_KEY === 'string' ? SUPABASE_KEY.trim() : '';
+  if (!url || !key || !createClient) {
     return null;
   }
-  client = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  client = createClient(url, key, {
     auth: {
       persistSession: true,
       storageKey: 'wd_auth',
       autoRefreshToken: true,
+      // For email link flows; harmless for email/password
       detectSessionInUrl: true,
     },
   });

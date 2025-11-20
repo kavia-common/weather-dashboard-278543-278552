@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthProvider';
 import SignOutButton from './auth/SignOutButton';
 import SignIn from './auth/SignIn';
 import SignUp from './auth/SignUp';
+import AuthStatus from './AuthStatus';
 
 // PUBLIC_INTERFACE
 export default function Header({ onSearch, statusMessage }) {
@@ -37,9 +38,12 @@ export default function Header({ onSearch, statusMessage }) {
             </details>
           )}
         </div>
+        {/* App status live region */}
         <div aria-live="polite" aria-atomic="true" style={{ position: 'absolute', left: -9999 }}>
           {statusMessage}
         </div>
+        {/* Auth status live region */}
+        <AuthStatus />
       </div>
     </header>
   );

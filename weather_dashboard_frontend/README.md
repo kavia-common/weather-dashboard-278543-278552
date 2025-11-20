@@ -27,6 +27,18 @@ REACT_APP_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
 REACT_APP_SUPABASE_KEY=YOUR-ANON-PUBLIC-KEY
 REACT_APP_FRONTEND_URL=https://your-frontend.example.com
 
+## Frontend Auth wiring checklist (Supabase)
+- supabaseClient.js reads REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_KEY only; no hardcoded secrets.
+- AuthProvider:
+  - Calls supabase.auth.getSession() on mount and sets user/session.
+  - Subscribes to supabase.auth.onAuthStateChange and updates context.
+  - Exposes { user, session, loading, error, signIn, signUp, signOut }.
+- SignIn, SignUp, SignOut components call signInWithPassword, signUp, signOut with validation and accessible messages.
+- Optional redirect: SignUp uses REACT_APP_FRONTEND_URL for emailRedirectTo if provided.
+- App/index: Wrap App with <AuthProvider> (already wired in src/index.js).
+- UI protection: Favorites and Recent Searches are shown only when authenticated.
+- Accessibility: Auth status announced via an aria-live region (components/AuthStatus.jsx).
+
 ## Run
 - npm install
   - If your environment restricts network access, ensure the following packages are available: @supabase/supabase-js, @testing-library/react-hooks (dev). The app guards Supabase initialization; without the package, auth/favorites/history are disabled gracefully.
@@ -124,5 +136,5 @@ Notes:
 - Use HTTPS for all endpoints in production
 
 ## Testing
-- Minimal tests cover AuthProvider shape and utility behaviors.
+- Minimal tests cover AuthProvider shape and utility behaviors, including session init and sign-out transitions.
 - Run: `npm test`
