@@ -4,7 +4,7 @@ Interactive weather UI built with React, using a modern Ocean Professional theme
 
 ## Features
 - Header with debounced location search
-- Current conditions card
+- Current conditions card and compact WeatherCard
 - Hourly and 7-day forecast sections
 - Lightweight temperature trend chart (Canvas)
 - Responsive layout with sidebar (visible on large screens)
@@ -14,36 +14,78 @@ Interactive weather UI built with React, using a modern Ocean Professional theme
 
 ## Environment Variables
 Provide these in your `.env`:
-- REACT_APP_API_BASE: Base URL for weather API proxy (e.g., https://api.example.com). Required for live data.
+
+Required for at least one mode:
+- Proxy mode (recommended):
+  - REACT_APP_API_BASE: Base URL for your backend weather proxy (e.g., https://api.example.com)
+- Direct API mode (fallback when no proxy):
+  - REACT_APP_WEATHER_API_KEY: Your weather API key (OpenWeatherMap by default)
+  - REACT_APP_WEATHER_API_BASE: Weather API base (optional; defaults to https://api.openweathermap.org)
+
+Supabase (optional for auth/favorites/history):
 - REACT_APP_SUPABASE_URL: Supabase project URL.
 - REACT_APP_SUPABASE_KEY: Supabase anon/public key.
 - REACT_APP_FRONTEND_URL: The deployed site URL used for emailRedirectTo (optional; defaults to window.location.origin in browser).
 
-Note: Do not commit real values. This repo does not write or read the .env directly beyond process.env at runtime.
+Note: Do not commit real values. This repo does not write or read the `.env` directly beyond `process.env` at runtime.
 
-Example `.env`:
+Example `.env` (Proxy mode):
 REACT_APP_API_BASE=https://your-backend.example.com
 REACT_APP_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
 REACT_APP_SUPABASE_KEY=YOUR-ANON-PUBLIC-KEY
 REACT_APP_FRONTEND_URL=https://your-frontend.example.com
 
-## Frontend Auth wiring checklist (Supabase)
-- supabaseClient.js reads REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_KEY only; no hardcoded secrets.
-- AuthProvider:
-  - Calls supabase.auth.getSession() on mount and sets user/session.
-  - Subscribes to supabase.auth.onAuthStateChange and updates context.
-  - Exposes { user, session, loading, error, signIn, signUp, signOut }.
-- SignIn, SignUp, SignOut components call signInWithPassword, signUp, signOut with validation and accessible messages.
-- Optional redirect: SignUp uses REACT_APP_FRONTEND_URL for emailRedirectTo if provided.
-- App/index: Wrap App with <AuthProvider> (already wired in src/index.js).
-- UI protection: Favorites and Recent Searches are shown only when authenticated.
-- Accessibility: Auth status announced via an aria-live region (components/AuthStatus.jsx).
+Example `.env` (Direct API mode):
+REACT_APP_WEATHER_API_KEY=YOUR_OPENWEATHERMAP_KEY
+# Optional override:
+# REACT_APP_WEATHER_API_BASE=https://api.openweathermap.org
 
 ## Run
 - npm install
   - If your environment restricts network access, ensure the following packages are available: @supabase/supabase-js, @testing-library/react-hooks (dev). The app guards Supabase initialization; without the package, auth/favorites/history are disabled gracefully.
 - npm start
 - npm test
+
+## API Integration
+The frontend prefers a backend proxy derived from `REACT_APP_API_BASE`.
+
+Primary proxy endpoint:
+- GET `${REACT_APP_API_BASE}/weather?query=<city>`
+
+Optional split endpoints (if your backend exposes them):
+- GET `${REACT_APP_API_BASE}/weather/current?query=<city>`
+- GET `${REACT_APP_API_BASE}/weather/hourly?query=<city>`
+- GET `${REACT_APP_API_BASE}/weather/daily?query=<city>`
+
+Direct API (fallback when no proxy):
+- Defaults to OpenWeatherMap "Current weather data" endpoint:
+  - GET `https://api.openweathermap.org/data/2.5/weather?q=<city>&appid=<REACT_APP_WEATHER_API_KEY>`
+- Only current conditions are mapped in direct mode; hourly/daily arrays are empty unless proxy provides them.
+
+Expected view model shape (UI expects this):
+```
+{
+  "location": { "name": "Seattle", "country": "USA" },
+  "current": {
+    "tempC": 21,
+    "humidity": 58,
+    "windKph": 12,
+    "condition": "Partly Cloudy",
+    "icon": "⛅ or URL",
+    "feelsLikeC": 22,
+    "updatedAt": "2024-01-01T12:00:00Z"
+  },
+  "hourly": [...],
+  "daily": [...]
+}
+```
+
+## Security and Quality
+- Inputs sanitized and debounced
+- Timeouts and aborts for fetches
+- Graceful error handling: generic messages; specific "City not found" when applicable
+- No secrets in code; env variables only
+- Use HTTPS for all endpoints in production
 
 ## Supabase Setup
 1. In your Supabase project, under Authentication -> Settings, ensure email/password sign-in is enabled.
@@ -88,52 +130,12 @@ create policy "recent_delete_own" on public.recent_searches for delete using (au
 4. Start the app and use the Account panel in the header to sign up/sign in.
 
 ## Architecture
-- src/components: UI components (Header, SearchBar, CurrentWeatherCard, ForecastList, ForecastGraph, Sidebar)
+- src/components: UI components (Header, SearchBar, CurrentWeatherCard, WeatherCard, ForecastList, ForecastGraph, Sidebar, Spinner)
 - src/components/auth: SignIn, SignUp, SignOutButton
 - src/services: weatherService (API integration), supabaseClient (Supabase client), userDataService (favorites/recent)
 - src/auth: AuthProvider for session handling
 - src/utils: debounce, sanitizeQuery, safeFetch (with timeouts)
 - src/theme.css and src/App.css: Theme and layout styles
-
-## API Integration
-The frontend calls a backend proxy derived from `REACT_APP_API_BASE`.
-
-Primary endpoint:
-- GET `${REACT_APP_API_BASE}/weather?query=<city>`
-
-Optional split endpoints (if your backend exposes them):
-- GET `${REACT_APP_API_BASE}/weather/current?query=<city>`
-- GET `${REACT_APP_API_BASE}/weather/hourly?query=<city>`
-- GET `${REACT_APP_API_BASE}/weather/daily?query=<city>`
-
-Expected response shape for the primary endpoint:
-```
-{
-  "location": { "name": "Seattle", "country": "USA" },
-  "current": {
-    "tempC": 21,
-    "humidity": 58,
-    "windKph": 12,
-    "condition": "Partly Cloudy",
-    "icon": "⛅",
-    "feelsLikeC": 22,
-    "updatedAt": "2024-01-01T12:00:00Z"
-  },
-  "hourly": [{ "time": "2024-01-01T13:00:00Z", "tempC": 20, "condition": "Cloudy", "icon": "☁️" }],
-  "daily": [{ "date": "2024-01-02", "lowC": 12, "highC": 18, "condition": "Sunny", "icon": "☀️" }]
-}
-```
-
-Notes:
-- Inputs are sanitized in the UI before requesting.
-- Requests include timeouts and use AbortController under the hood (`safeFetch`).
-- Errors are handled gracefully with generic messages; no internal details are exposed.
-
-## Security and Quality
-- Input sanitized and debounced
-- Network errors handled without leaking stack traces
-- No secrets in code; env variables only
-- Use HTTPS for all endpoints in production
 
 ## Testing
 - Minimal tests cover AuthProvider shape and utility behaviors, including session init and sign-out transitions.

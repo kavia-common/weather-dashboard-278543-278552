@@ -6,6 +6,8 @@ import CurrentWeatherCard from './components/CurrentWeatherCard';
 import ForecastList from './components/ForecastList';
 import ForecastGraph from './components/ForecastGraph';
 import Sidebar from './components/Sidebar';
+import Spinner from './components/Spinner';
+import WeatherCard from './components/WeatherCard';
 import { fetchWeather } from './services/weatherService';
 import { useAuth } from './auth/AuthProvider';
 import { AddFavoriteButton } from './components/FavoritesSidebar';
@@ -55,9 +57,9 @@ function App() {
       if (user?.id) {
         await addRecentSearch(user.id, q, 8);
       }
-    } catch (_e) {
-      // Avoid exposing stack traces or internal details
-      setError('Failed to load weather data.');
+    } catch (e) {
+      const isCityNotFound = e && (e.code === 'CITY_NOT_FOUND' || /CITY_NOT_FOUND/.test(String(e.message)));
+      setError(isCityNotFound ? 'City not found. Try another search.' : 'Failed to load weather data.');
       setStatusMsg('Error loading data');
     } finally {
       setLoading(false);
@@ -70,6 +72,7 @@ function App() {
     <div>
       <Header onSearch={handleSearch} statusMessage={statusMsg} />
       <main className="container">
+        <h1 className="section-title" style={{ fontSize: 22, marginTop: 8 }}>Weather Dashboard</h1>
         <div className="layout" role="main">
           <div className="sidebar">
             <Sidebar current={data.current} onSelect={handleSearch} />
@@ -77,16 +80,32 @@ function App() {
 
           <div className="content">
             {error && <div className="alert" role="alert">{error}</div>}
-            {loading && !data.current && <div className="loading" role="status" aria-live="polite">Loading data…</div>}
+            {loading && !data.current && <Spinner label="Loading data…" />}
 
             <div className="row">
               <div>
+                {/* Existing detailed card remains for extended info */}
                 <CurrentWeatherCard
                   location={data.location}
                   current={data.current}
                   loading={loading && !data.current}
                   error={!!error && !data.current}
                 />
+                {/* New compact WeatherCard per requirement */}
+                {data.current && (
+                  <div style={{ marginTop: 12 }}>
+                    <WeatherCard
+                      city={data.location?.name}
+                      country={data.location?.country}
+                      temperatureC={data.current?.tempC}
+                      condition={data.current?.condition}
+                      humidity={data.current?.humidity}
+                      windKph={data.current?.windKph}
+                      icon={data.current?.icon}
+                      updatedAt={data.current?.updatedAt}
+                    />
+                  </div>
+                )}
                 {data.location?.name && <AddFavoriteButton location={data.location} />}
               </div>
               <ForecastGraph hourly={hourlyForChart} />
@@ -98,7 +117,11 @@ function App() {
             </div>
 
             <div className="footer-note" style={{ marginTop: 12 }}>
-              API base: {process.env.REACT_APP_API_BASE ? 'Configured' : 'Not configured — set REACT_APP_API_BASE to enable live data'}
+              {process.env.REACT_APP_API_BASE
+                ? 'Using backend proxy for weather data.'
+                : (process.env.REACT_APP_WEATHER_API_KEY
+                    ? 'Using direct OpenWeatherMap API.'
+                    : 'Set REACT_APP_API_BASE or REACT_APP_WEATHER_API_KEY to enable live data.')}
             </div>
           </div>
         </div>
