@@ -1,9 +1,11 @@
 import React from 'react';
+import FavoritesSidebar from './FavoritesSidebar';
+import RecentSearches from './RecentSearches';
 
 // PUBLIC_INTERFACE
-export default function Sidebar({ current }) {
+export default function Sidebar({ current, onSelect }) {
   /**
-   * Sidebar with additional stats and placeholders for future features.
+   * Sidebar with details, favorites, and recent searches.
    */
   return (
     <aside className="sidebar">
@@ -20,12 +22,12 @@ export default function Sidebar({ current }) {
           <div className="footer-note">Search a city to view details.</div>
         )}
       </div>
-      <div className="card" style={{ marginTop: 16 }}>
-        <h2 className="section-title">Integrations</h2>
-        <div className="footer-note">
-          TODO: Supabase integration for favorites and history. Ensure REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_KEY are set.
-        </div>
+
+      <div style={{ marginTop: 16 }}>
+        <FavoritesSidebar onSelect={onSelect} />
       </div>
+
+      <RecentSearches onSelect={onSelect} />
     </aside>
   );
 }

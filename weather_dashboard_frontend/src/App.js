@@ -7,6 +7,9 @@ import ForecastList from './components/ForecastList';
 import ForecastGraph from './components/ForecastGraph';
 import Sidebar from './components/Sidebar';
 import { fetchWeather } from './services/weatherService';
+import { useAuth } from './auth/AuthProvider';
+import { AddFavoriteButton } from './components/FavoritesSidebar';
+import { addRecentSearch } from './services/userDataService';
 
 /**
  * PUBLIC_INTERFACE
@@ -21,6 +24,7 @@ function App() {
   const [data, setData] = useState({ location: null, current: null, hourly: [], daily: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { user } = useAuth();
 
   // Apply theme data attribute
   useEffect(() => {
@@ -47,7 +51,11 @@ function App() {
         daily: Array.isArray(res.daily) ? res.daily : [],
       });
       setStatusMsg(`Loaded forecast for ${res.location?.name || q}`);
-    } catch (e) {
+      // Record recent search for signed-in users
+      if (user?.id) {
+        await addRecentSearch(user.id, q, 8);
+      }
+    } catch (_e) {
       // Avoid exposing stack traces or internal details
       setError('Failed to load weather data.');
       setStatusMsg('Error loading data');
@@ -64,7 +72,7 @@ function App() {
       <main className="container">
         <div className="layout" role="main">
           <div className="sidebar">
-            <Sidebar current={data.current} />
+            <Sidebar current={data.current} onSelect={handleSearch} />
           </div>
 
           <div className="content">
@@ -72,12 +80,15 @@ function App() {
             {loading && !data.current && <div className="loading" role="status" aria-live="polite">Loading data…</div>}
 
             <div className="row">
-              <CurrentWeatherCard
-                location={data.location}
-                current={data.current}
-                loading={loading && !data.current}
-                error={!!error && !data.current}
-              />
+              <div>
+                <CurrentWeatherCard
+                  location={data.location}
+                  current={data.current}
+                  loading={loading && !data.current}
+                  error={!!error && !data.current}
+                />
+                {data.location?.name && <AddFavoriteButton location={data.location} />}
+              </div>
               <ForecastGraph hourly={hourlyForChart} />
             </div>
 

@@ -1,28 +1,38 @@
 /**
- * Supabase scaffolding for future integration.
+ * Supabase client initialization.
  * Reads configuration from environment variables only.
  * No secrets are hardcoded in source code.
  *
- * TODO: Uncomment when supabase-js is added as a dependency and used.
+ * Note: We guard the import of '@supabase/supabase-js' to avoid build failures
+ * in restricted CI environments without the package installed.
  */
-
-// import { createClient } from '@supabase/supabase-js';
+let createClient = null;
+try {
+  // eslint-disable-next-line global-require, import/no-extraneous-dependencies
+  ({ createClient } = require('@supabase/supabase-js'));
+} catch (_e) {
+  createClient = null;
+}
 
 const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
 const SUPABASE_KEY = process.env.REACT_APP_SUPABASE_KEY;
 
-/**
+let client = null;
+
 // PUBLIC_INTERFACE
 export function getSupabaseClient() {
-  // Validate presence at runtime without throwing sensitive details
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
-    // Intentionally return null to indicate not configured yet
+  /** Returns a singleton Supabase client if env vars are configured and dep available, otherwise null. */
+  if (client) return client;
+  if (!SUPABASE_URL || !SUPABASE_KEY || !createClient) {
     return null;
   }
-  // return createClient(SUPABASE_URL, SUPABASE_KEY);
-  return null; // Placeholder until supabase-js is installed
-}
-*/
-export function getSupabaseClient() {
-  return null; // Placeholder
+  client = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: {
+      persistSession: true,
+      storageKey: 'wd_auth',
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  });
+  return client;
 }
