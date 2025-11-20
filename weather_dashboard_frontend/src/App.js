@@ -87,7 +87,7 @@ function App() {
             </div>
 
             <div className="footer-note" style={{ marginTop: 12 }}>
-              API base: {process.env.REACT_APP_API_BASE ? 'Configured' : 'Not configured (using mock data)'}
+              API base: {process.env.REACT_APP_API_BASE ? 'Configured' : 'Not configured — set REACT_APP_API_BASE to enable live data'}
             </div>
           </div>
         </div>
